@@ -28,10 +28,7 @@ class Application:
             main_window_width,
             main_window_height
         )
-        
-    def show_main_window(self):
         self.main_window.show()
         
     def run(self) -> bool:
-        self.show_main_window()
         return self.app.exec()

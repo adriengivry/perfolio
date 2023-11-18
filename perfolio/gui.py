@@ -467,10 +467,6 @@ class MainWindow(QMainWindow):
         # Set window icon
         self.setWindowIcon(QIcon(emoji_pixmap))
         
-    def closeEvent(self, event):
-        self.hide()
-        event.ignore()
-        
     def init_ui(self):
         self.setWindowTitle(f"Perfolio")
         
