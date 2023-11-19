@@ -126,16 +126,14 @@ class AppSettings:
     
     @staticmethod
     def load_settings():
-        settings_folder = Utils.get_appdata_path()
-        settings_file = os.path.join(settings_folder, "settings.json")
+        settings_file = Utils.get_settings_file_path()
         if os.path.exists(settings_file):
             with open(settings_file, "r") as file:
                 AppSettings.settings = json.load(file)
 
     @staticmethod
     def save_settings():
-        settings_folder = Utils.get_appdata_path()
-        os.makedirs(settings_folder, exist_ok=True)
-        settings_file = os.path.join(settings_folder, "settings.json")
+        settings_file = Utils.get_settings_file_path()
+        os.makedirs(settings_file, exist_ok=True)
         with open(settings_file, "w") as file:
             json.dump(AppSettings.settings, file, indent=4)

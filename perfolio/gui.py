@@ -111,6 +111,7 @@ class Panel(QDockWidget):
     
 class TransactionPanel(Panel):
     def __init__(self, title, parent):
+        self.current_working_portfolio = None
         super().__init__(title, parent)
 
     def setup_table(self):
@@ -128,6 +129,9 @@ class TransactionPanel(Panel):
         self.transactions_table.setColumnCount(5)
         self.transactions_table.setHorizontalHeaderLabels(["Symbol", "Date", "Type", "Qty", "Price"])
         self.setup_table()
+        
+        last_opened_portfolio = Utils.retrieve_last_opened_portfolio()
+        self.load_data_from_csv(last_opened_portfolio)
 
         # Add a label or other widgets if needed
         title_label = QLabel("Stock Market Transactions")
@@ -137,7 +141,7 @@ class TransactionPanel(Panel):
 
         # Add the button to load data from a CSV file
         load_button = QPushButton("Load from CSV")
-        load_button.clicked.connect(self.load_data_from_csv)
+        load_button.clicked.connect(self.load_data_from_csv_dialog)
         layout.addWidget(load_button)
 
         # Add any additional widgets or buttons if needed
@@ -147,25 +151,33 @@ class TransactionPanel(Panel):
         
         return layout
 
-    def load_data_from_csv(self):
+    def load_data_from_csv_dialog(self):
         # Open a file dialog to get the path to the CSV file
         file_dialog = QFileDialog()
         file_path, _ = file_dialog.getOpenFileName(self, "Open CSV File", "", "CSV Files (*.csv)")
+        self.load_data_from_csv(file_path)
 
+    def load_data_from_csv(self, file_path):
         if file_path:
             print(f"Loading data from CSV file: {file_path}")
 
             # Load data from the CSV file and update the table
             try:
+                data = []
+
                 with open(file_path, 'r', newline='') as csvfile:
                     csvreader = csv.reader(csvfile)
                     headers = next(csvreader)
                     data = [row for row in csvreader]
-
-                self.load_data_to_table(data)
+                    self.set_current_working_portfolio(file_path, data)
 
             except Exception as e:
                 print(f"Error loading CSV file: {e}")
+
+    def set_current_working_portfolio(self, file_path, data):
+        self.current_working_portfolio = file_path
+        Utils.store_last_opened_portfolio(file_path)
+        self.load_data_to_table(data)
     
     def refresh_table(self):
         # Implement refresh logic here if needed
