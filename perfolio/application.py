@@ -21,7 +21,7 @@ class Application:
         self.main_window = MainWindow()
         screen_geometry = self.app.primaryScreen().availableGeometry()
         main_window_width = 1280
-        main_window_height = 960
+        main_window_height = 720
         self.main_window.setGeometry(
             (screen_geometry.width() - main_window_width) // 2,
             (screen_geometry.height() - main_window_height) // 2,

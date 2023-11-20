@@ -115,9 +115,7 @@ class TransactionPanel(Panel):
         super().__init__(title, parent)
 
     def setup_table(self):
-        # Set table properties
-        self.transactions_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
-        self.transactions_table.horizontalHeader().setStretchLastSection(True)
+        self.transactions_table.horizontalHeader().setStretchLastSection(False)
         self.transactions_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
         self.transactions_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.transactions_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -127,17 +125,12 @@ class TransactionPanel(Panel):
 
         self.transactions_table = QTableWidget()
         self.transactions_table.setColumnCount(5)
-        self.transactions_table.setHorizontalHeaderLabels(["Symbol", "Date", "Type", "Qty", "Price"])
+        self.transactions_table.setHorizontalHeaderLabels(["Symbol", "Date", "Type", "Quantity", "Price"])
         self.setup_table()
+        layout.addWidget(self.transactions_table)
         
         last_opened_portfolio = Utils.retrieve_last_opened_portfolio()
         self.load_data_from_csv(last_opened_portfolio)
-
-        # Add a label or other widgets if needed
-        title_label = QLabel("Stock Market Transactions")
-        layout.addWidget(title_label)
-
-        layout.addWidget(self.transactions_table)
 
         # Add the button to load data from a CSV file
         load_button = QPushButton("Load from CSV")
@@ -194,6 +187,8 @@ class TransactionPanel(Panel):
                 item = QTableWidgetItem(str(value))
                 self.transactions_table.setItem(row, col, item)
 
+        self.transactions_table.resizeColumnsToContents()
+
     def get_all_transactions(self):
         all_transactions = []
 
@@ -218,17 +213,18 @@ class OperationPanel(QDockWidget):
 
     def create_layout(self):
         layout = QVBoxLayout()
+        layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         # Add date selection widgets
         date_layout = QHBoxLayout()
 
-        start_label = QLabel("Perdiod Start Date:")
+        start_label = QLabel("From")
         self.start_date_edit = QDateEdit(calendarPopup=True)
         self.start_date_edit.setDate(QDate.currentDate().addYears(-1))  # Set default to one year ago
         date_layout.addWidget(start_label)
         date_layout.addWidget(self.start_date_edit)
 
-        end_label = QLabel("Period End Date:")
+        end_label = QLabel("To")
         self.end_date_edit = QDateEdit(calendarPopup=True)
         self.end_date_edit.setDate(QDate.currentDate())
         date_layout.addWidget(end_label)
@@ -240,10 +236,6 @@ class OperationPanel(QDockWidget):
         load_transactions_button = QPushButton("Load Transactions")
         load_transactions_button.clicked.connect(self.retrieve_transactions)
         layout.addWidget(load_transactions_button)
-
-        # Add a table to display retrieved transactions
-        self.table = QTableWidget()
-        layout.addWidget(self.table)
 
         # Add a button to calculate TWR
         calculate_twr_button = QPushButton("Calculate TWR")
@@ -276,7 +268,7 @@ class OperationPanel(QDockWidget):
         twr = TWRProcessor.calculate_twr(all_transactions,start_date, end_date)
 
         # Print the result
-        self.outputPanel.append(f"Time-Weighted Return (TWR): {twr.value:.2%}")
+        self.outputPanel.append_text(f"Time-Weighted Return (TWR): {twr.value:.2%}")
         self.populate_table_with_twr_periods(twr.periods)
 
     def load_start_portfolio(self):
@@ -306,60 +298,17 @@ class OperationPanel(QDockWidget):
         self.populate_table_with_transactions(self.transactions)
 
     def populate_table_with_portfolio(self, portfolio):
-        # Clear existing data
-        self.table.setRowCount(0)
-
-        # Setup table structure
-        self.table.setColumnCount(2)
-        self.table.setHorizontalHeaderLabels(["Symbol", "Qty"])
-
-        # Load retrieved transactions to the table
-        for row, entry in enumerate(portfolio):
-            self.table.insertRow(row)
-            for col, value in enumerate(entry):
-                item = QTableWidgetItem(str(value))
-                self.table.setItem(row, col, item)
+        self.outputPanel.set_table(["Symbol", "Qty"], portfolio)
 
     def populate_table_with_portfolio_diff(self, portfolio):
-        # Clear existing data
-        self.table.setRowCount(0)
-
-        # Setup table structure
-        self.table.setColumnCount(4)
-        self.table.setHorizontalHeaderLabels(["Symbol", "Start Qty", "End Qty", "Diff"])
-
-        # Load retrieved transactions to the table
-        for row, entry in enumerate(portfolio):
-            self.table.insertRow(row)
-            for col, value in enumerate(entry):
-                item = QTableWidgetItem(str(value))
-                self.table.setItem(row, col, item)
+        self.outputPanel.set_table(["Symbol", "Start Qty", "End Qty", "Diff"], portfolio)
 
     def populate_table_with_transactions(self, transactions):
-        # Clear existing data
-        self.table.setRowCount(0)
-
-        # Setup table structure
-        self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels(["Symbol", "Date", "Type", "Qty", "Price"])
-
-        # Load retrieved transactions to the table
-        for row, transaction in enumerate(transactions):
-            self.table.insertRow(row)
-            for col, value in enumerate(transaction):
-                item = QTableWidgetItem(str(value))
-                self.table.setItem(row, col, item)
+        self.outputPanel.set_table(["Symbol", "Date", "Type", "Qty", "Price"], transactions)
 
     def populate_table_with_twr_periods(self, periods: list[TWRPeriod]):
-        self.table.setRowCount(0)
-        # Setup table structure
-        self.table.setColumnCount(7)
-        self.table.setHorizontalHeaderLabels(["From", "To", "Growth Factor", "Return", "Portfolio Initial Value", "Portfolio Final Value", "Cash Flow", "Gain/Loss"])
-
-        # Load periods to the table
-        for row, period in enumerate(periods):
-            self.table.insertRow(row)
-            values = [
+        self.outputPanel.set_table(["From", "To", "Growth Factor", "Return", "Portfolio Initial Value", "Portfolio Final Value", "Cash Flow", "Gain/Loss"], [
+            (
                 period.start_date.toString(Qt.DateFormat.ISODate),
                 period.end_date.toString(Qt.DateFormat.ISODate),
                 f"{period.growth_factor:.2f}",
@@ -368,16 +317,14 @@ class OperationPanel(QDockWidget):
                 f"$ {period.end_portfolio_value:,.2f}",
                 f"$ {period.cash_flow:,.2f}",
                 f"$ {period.gain_loss:,.2f}"
-            ]
-            for col, value in enumerate(values):
-                item = QTableWidgetItem(str(value))
-                self.table.setItem(row, col, item)
-
+            )
+            for period in periods
+        ])
     
 class OutputPanel(Panel):    
     def __init__(self, title, parent):
         super().__init__(title, parent)
-        self.clear()
+        self.clear_text()
         
     def create_output(self) -> QTextEdit:
         # Setup output font
@@ -390,8 +337,19 @@ class OutputPanel(Panel):
         output.setReadOnly(True)
         output.setAcceptRichText(False)
         output.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
+        output.setMaximumHeight(128)
         
         return output
+    
+    def create_table(self) -> QTableWidget:
+        table = QTableWidget()
+        
+        table.horizontalHeader().setStretchLastSection(False)
+        table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+
+        return table
     
     def create_controls(self) -> QLayout:
         # Create controls
@@ -407,7 +365,7 @@ class OutputPanel(Panel):
         self.copy_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogSaveButton))
         
         # Controls Callbacks
-        self.clear_button.clicked.connect(self.clear)
+        self.clear_button.clicked.connect(self.clear_text)
         self.scroll_to_bottom_button.clicked.connect(self.scroll_to_bottom)
         self.scroll_to_top_button.clicked.connect(self.scroll_to_top)
         self.copy_button.clicked.connect(self.copy_to_clipboard)
@@ -424,21 +382,47 @@ class OutputPanel(Panel):
     def create_layout(self):
         layout = QVBoxLayout()
         
+        self.table = self.create_table()
         self.output = self.create_output()
         controls_layout = self.create_controls()
         
+        layout.addWidget(self.table)
         layout.addWidget(self.output)
         layout.addLayout(controls_layout)
         
         return layout
+    
+    def set_table(self, headers: list[str], data: list[tuple]):
+        self.clear_table()
+        self.table.setColumnCount(len(headers))
+        self.table.setHorizontalHeaderLabels(headers)
 
-    def append(self, text):
+        for rowIndex, entry in enumerate(data):
+            self.table.insertRow(rowIndex)
+            for col, value in enumerate(entry):
+                    item = QTableWidgetItem(str(value))
+                    self.table.setItem(rowIndex, col, item)
+
+        self.table.resizeColumnsToContents()
+
+    def clear_table(self):
+        self.table.setHorizontalHeaderLabels([])
+        self.table.setRowCount(0)
+
+    def append_text(self, text):
         if text != None:
             self.clear_button.setEnabled(True)
             self.scroll_to_top_button.setEnabled(True)
             self.scroll_to_bottom_button.setEnabled(True)
             self.copy_button.setEnabled(True)
             self.output.append(text)
+
+    def clear_text(self):
+        self.clear_button.setEnabled(False)
+        self.scroll_to_top_button.setEnabled(False)
+        self.scroll_to_bottom_button.setEnabled(False)
+        self.copy_button.setEnabled(False)
+        self.output.clear()
             
     def scroll_to_bottom(self):
         max_y_scroll = self.output.verticalScrollBar().maximum()
@@ -448,18 +432,11 @@ class OutputPanel(Panel):
     def scroll_to_top(self):
         self.output.verticalScrollBar().setValue(0)
         self.output.horizontalScrollBar().setValue(0)
-
-    def clear(self):
-        self.clear_button.setEnabled(False)
-        self.scroll_to_top_button.setEnabled(False)
-        self.scroll_to_bottom_button.setEnabled(False)
-        self.copy_button.setEnabled(False)
-        self.output.clear()
         
     def copy_to_clipboard(self):
         clipboard = QApplication.clipboard()
         clipboard.setText(self.output.toPlainText())
-        
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -489,9 +466,9 @@ class MainWindow(QMainWindow):
 
         # Setup docking
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.transaction_panel)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.output_panel)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.operation_panel)
-        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.output_panel)
-        self.setCentralWidget(self.operation_panel)
+        self.setCentralWidget(self.output_panel)
         
     def init_menu(self):
         menu_bar = self.menuBar()
