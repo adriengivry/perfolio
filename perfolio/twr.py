@@ -4,7 +4,7 @@ from PySide6.QtCore import Qt, QDate
 import numpy
 import yfinance as yf
 
-from perfolio.operations import Operations 
+from perfolio.finance import Finance
 from perfolio.symbol import SymbolCache 
 
 class TWRPeriod:
@@ -26,8 +26,8 @@ class TWRResult:
 class TWRProcessor:
     @staticmethod
     def calculate_twr_period(all_transactions, symbol_cache: SymbolCache, period_date: QDate, previous_period_date: QDate, previous_period_portfolio: float) -> TWRPeriod:
-        current_portfolio = Operations.calculate_portfolio_value_at_date_from_transactions(all_transactions, symbol_cache, period_date, True)
-        period_cash_flows = Operations.calculate_cash_flows(Operations.get_transactions_between_dates(all_transactions, previous_period_date, period_date))
+        current_portfolio = Finance.calculate_portfolio_value_at_date_from_transactions(all_transactions, symbol_cache, period_date, True)
+        period_cash_flows = Finance.calculate_cash_flows(Finance.get_transactions_between_dates(all_transactions, previous_period_date, period_date))
 
         if previous_period_portfolio != 0:
             growth_factor = (current_portfolio - period_cash_flows) / previous_period_portfolio
@@ -51,7 +51,7 @@ class TWRProcessor:
     
     @staticmethod
     def calculate_twr(transactions, begin_date: QDate, end_date: QDate) -> TWRResult:
-        filtered_transactions = Operations.get_transactions_between_dates(transactions, begin_date, end_date)
+        filtered_transactions = Finance.get_transactions_between_dates(transactions, begin_date, end_date)
 
         unique_symbols = sorted(set(transaction[0] for transaction in transactions))
         symbol_cache = SymbolCache(begin_date, end_date, unique_symbols)
@@ -61,7 +61,7 @@ class TWRProcessor:
 
         periods = list[TWRPeriod]()
 
-        previous_portfolio = Operations.calculate_portfolio_value_at_date_from_transactions(transactions, symbol_cache, begin_date, False)
+        previous_portfolio = Finance.calculate_portfolio_value_at_date_from_transactions(transactions, symbol_cache, begin_date, False)
         previous_period_date = begin_date
 
         for period_date_str in periods_transactions.keys():

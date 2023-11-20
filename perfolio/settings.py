@@ -3,8 +3,8 @@ import os
 
 import qdarktheme
 
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QSizePolicy, QWidget, QTextEdit, QLineEdit, QCheckBox, QSpinBox, QDoubleSpinBox, QComboBox, QListWidget
+from PySide6.QtCore import Qt, QDate
+from PySide6.QtWidgets import QSizePolicy, QWidget, QTextEdit, QLineEdit, QCheckBox, QSpinBox, QDoubleSpinBox, QComboBox, QListWidget, QDateEdit
 from perfolio.utils import Utils
         
 class Setting:
@@ -74,6 +74,12 @@ class SettingFactory:
         def instantiate():
             return QCheckBox()
         return Setting(instantiate, QCheckBox.isChecked, QCheckBox.setChecked, label, default)
+    
+    @staticmethod
+    def date(label, default=QDate.currentDate(), calendarPopup=True):
+        def instantiate():
+            return QDateEdit(calendarPopup=calendarPopup)
+        return Setting(instantiate, QDateEdit.date, QDateEdit.setDate, label, default)
     
     @staticmethod
     def multilist(label, items: list[string], default=[]):

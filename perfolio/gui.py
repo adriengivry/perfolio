@@ -2,20 +2,24 @@ import os
 import csv
 
 from PySide6 import QtCore
-from PySide6.QtCore import Qt, QDate
-from PySide6.QtGui import QAction, QFont, QFontDatabase, QIcon, QPainter, QPixmap
+from PySide6.QtCore import Qt, QUrl
+from PySide6.QtGui import QAction, QFont, QFontDatabase, QIcon, QPainter, QPixmap, QDesktopServices
 from PySide6.QtWidgets import (
     QDialog, QLayout, QMainWindow, QMessageBox,
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QLabel, QFormLayout, QDockWidget, QStyle,
     QTextEdit, QApplication, QTableWidget,
     QFileDialog, QTableWidgetItem, QHeaderView,
-    QDateEdit
+    QGroupBox
 )
+import perfolio
+from perfolio.output import Output
+from perfolio.portfolio import Portfolio
 
 from perfolio.settings import AppSettings
 from perfolio.utils import Utils
-from perfolio.operations import Operations
+from perfolio.operations import OperationRegistry, Operation
+from perfolio.finance import Finance
 from perfolio.twr import TWRProcessor, TWRResult, TWRPeriod
 
 class SettingsDialog(QDialog):
@@ -98,6 +102,50 @@ class SettingsDialog(QDialog):
         else:
             QMessageBox.warning(self, "Warning", "Settings file not found.")
 
+class OperationSettingsDialog(QDialog):
+    def __init__(self, portfolio: Portfolio, output: Output, operation: Operation):
+        super().__init__()
+
+        self.portfolio = portfolio
+        self.output = output
+        self.operation = operation
+
+        self.setWindowTitle(f"{operation.name} Settings")
+        
+        layout = QFormLayout()
+        self.setLayout(layout)
+        
+        self.controls = dict[str, QWidget]()
+        
+        for id, setting in operation.get_settings_desc().items():
+            label = QLabel(setting.label)
+            self.controls[id] = setting.create_widget(id)
+            layout.addRow(label, self.controls[id])
+
+        buttons_layout = QHBoxLayout()  # Horizontal layout for buttons
+        
+        self.run_button = QPushButton("Run")
+        self.run_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.run_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay))
+        self.run_button.clicked.connect(self.on_run)
+        buttons_layout.addWidget(self.run_button)
+        
+        layout.addRow(buttons_layout)
+
+    def on_run(self):
+        settings = self.get_settings()
+        self.run_button.setDisabled(True)
+        self.operation.execute_with_settings(settings, self.portfolio, self.output)
+        self.close()
+
+    def get_settings(self) -> dict:
+        settings = {}
+
+        for key, setting in self.operation.get_settings_desc().items():
+            settings[key] = setting.get_from_widget(self.controls[key])
+            
+        return settings
+
 class Panel(QDockWidget):
     def __init__(self, title, parent):
         super().__init__(title, parent)
@@ -108,219 +156,7 @@ class Panel(QDockWidget):
     # Create and return the main layout of the panel
     def create_layout(self) -> QLayout:
         pass
-    
-class TransactionPanel(Panel):
-    def __init__(self, title, parent):
-        self.current_working_portfolio = None
-        super().__init__(title, parent)
 
-    def setup_table(self):
-        self.transactions_table.horizontalHeader().setStretchLastSection(False)
-        self.transactions_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
-        self.transactions_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        self.transactions_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        
-    def create_layout(self):
-        layout = QVBoxLayout()
-
-        self.transactions_table = QTableWidget()
-        self.transactions_table.setColumnCount(5)
-        self.transactions_table.setHorizontalHeaderLabels(["Symbol", "Date", "Type", "Quantity", "Price"])
-        self.setup_table()
-        layout.addWidget(self.transactions_table)
-        
-        last_opened_portfolio = Utils.retrieve_last_opened_portfolio()
-        self.load_data_from_csv(last_opened_portfolio)
-
-        # Add the button to load data from a CSV file
-        load_button = QPushButton("Load from CSV")
-        load_button.clicked.connect(self.load_data_from_csv_dialog)
-        layout.addWidget(load_button)
-
-        # Add any additional widgets or buttons if needed
-        refresh_button = QPushButton("Refresh")
-        refresh_button.clicked.connect(self.refresh_table)
-        layout.addWidget(refresh_button)
-        
-        return layout
-
-    def load_data_from_csv_dialog(self):
-        # Open a file dialog to get the path to the CSV file
-        file_dialog = QFileDialog()
-        file_path, _ = file_dialog.getOpenFileName(self, "Open CSV File", "", "CSV Files (*.csv)")
-        self.load_data_from_csv(file_path)
-
-    def load_data_from_csv(self, file_path):
-        if file_path:
-            print(f"Loading data from CSV file: {file_path}")
-
-            # Load data from the CSV file and update the table
-            try:
-                data = []
-
-                with open(file_path, 'r', newline='') as csvfile:
-                    csvreader = csv.reader(csvfile)
-                    headers = next(csvreader)
-                    data = [row for row in csvreader]
-                    self.set_current_working_portfolio(file_path, data)
-
-            except Exception as e:
-                print(f"Error loading CSV file: {e}")
-
-    def set_current_working_portfolio(self, file_path, data):
-        self.current_working_portfolio = file_path
-        Utils.store_last_opened_portfolio(file_path)
-        self.load_data_to_table(data)
-    
-    def refresh_table(self):
-        # Implement refresh logic here if needed
-        pass
-
-    def load_data_to_table(self, data):
-        # Clear existing data
-        self.transactions_table.setRowCount(0)
-
-        # Load data to the table
-        for row, transaction in enumerate(data):
-            self.transactions_table.insertRow(row)
-            for col, value in enumerate(transaction):
-                item = QTableWidgetItem(str(value))
-                self.transactions_table.setItem(row, col, item)
-
-        self.transactions_table.resizeColumnsToContents()
-
-    def get_all_transactions(self):
-        all_transactions = []
-
-        for row in range(self.transactions_table.rowCount()):
-            transaction = []
-            for col in range(self.transactions_table.columnCount()):
-                item = self.transactions_table.item(row, col)
-                transaction.append(item.text())
-            all_transactions.append(tuple(transaction))
-
-        return all_transactions
-
-class OperationPanel(QDockWidget):
-    def __init__(self, title, parent, transactionPanel, outputPanel):
-        super().__init__(title, parent)
-        self.transactionPanel = transactionPanel
-        self.outputPanel = outputPanel
-        self.transactions = []
-        self.setFeatures(QDockWidget.DockWidgetFeature.NoDockWidgetFeatures)
-        self.setWidget(QWidget())
-        self.widget().setLayout(self.create_layout())
-
-    def create_layout(self):
-        layout = QVBoxLayout()
-        layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-
-        # Add date selection widgets
-        date_layout = QHBoxLayout()
-
-        start_label = QLabel("From")
-        self.start_date_edit = QDateEdit(calendarPopup=True)
-        self.start_date_edit.setDate(QDate.currentDate().addYears(-1))  # Set default to one year ago
-        date_layout.addWidget(start_label)
-        date_layout.addWidget(self.start_date_edit)
-
-        end_label = QLabel("To")
-        self.end_date_edit = QDateEdit(calendarPopup=True)
-        self.end_date_edit.setDate(QDate.currentDate())
-        date_layout.addWidget(end_label)
-        date_layout.addWidget(self.end_date_edit)
-
-        layout.addLayout(date_layout) 
-
-        # Add a button to retrieve transactions
-        load_transactions_button = QPushButton("Load Transactions")
-        load_transactions_button.clicked.connect(self.retrieve_transactions)
-        layout.addWidget(load_transactions_button)
-
-        # Add a button to calculate TWR
-        calculate_twr_button = QPushButton("Calculate TWR")
-        calculate_twr_button.clicked.connect(self.calculate_twr)
-        layout.addWidget(calculate_twr_button)
-
-        # Add a button to load the start portfolio
-        load_start_portfolio_button = QPushButton("Load Start Portfolio")
-        load_start_portfolio_button.clicked.connect(self.load_start_portfolio)
-        layout.addWidget(load_start_portfolio_button)
-
-        # Add a button to load the end portfolio
-        load_end_portfolio_button = QPushButton("Load End Portfolio")
-        load_end_portfolio_button.clicked.connect(self.load_end_portfolio)
-        layout.addWidget(load_end_portfolio_button)
-
-        # Add a button to load the end portfolio
-        load_diff_portfolio_button = QPushButton("Load Diff Portfolio")
-        load_diff_portfolio_button.clicked.connect(self.load_diff_portfolio)
-        layout.addWidget(load_diff_portfolio_button)
-
-        return layout
-    
-    def calculate_twr(self):
-        start_date = self.start_date_edit.date()
-        end_date = self.end_date_edit.date()
-
-        # Calculate TWR
-        all_transactions = self.transactionPanel.get_all_transactions()
-        twr = TWRProcessor.calculate_twr(all_transactions,start_date, end_date)
-
-        # Print the result
-        self.outputPanel.append_text(f"Time-Weighted Return (TWR): {twr.value:.2%}")
-        self.populate_table_with_twr_periods(twr.periods)
-
-    def load_start_portfolio(self):
-        all_transactions = self.transactionPanel.get_all_transactions()
-        portfolio = Operations.get_portfolio_at_date(all_transactions, self.start_date_edit.date(), False)
-        self.populate_table_with_portfolio(portfolio)
-
-    def load_end_portfolio(self):
-        all_transactions = self.transactionPanel.get_all_transactions()
-        portfolio = Operations.get_portfolio_at_date(all_transactions, self.end_date_edit.date(), True)
-        self.populate_table_with_portfolio(portfolio)
-
-    def load_diff_portfolio(self):
-        all_transactions = self.transactionPanel.get_all_transactions()
-        portfolio = Operations.get_portfolio_diff(all_transactions, self.start_date_edit.date(), self.end_date_edit.date())
-        self.populate_table_with_portfolio_diff(portfolio)
-
-    def retrieve_transactions(self):
-        # Implement logic to retrieve transactions between the selected dates
-        start_date = self.start_date_edit.date()
-        end_date = self.end_date_edit.date()
-
-        all_transactions = self.transactionPanel.get_all_transactions()
-        self.transactions = Operations.get_transactions_between_dates(all_transactions, start_date, end_date)
-    
-        # Update the table with retrieved transactions
-        self.populate_table_with_transactions(self.transactions)
-
-    def populate_table_with_portfolio(self, portfolio):
-        self.outputPanel.set_table(["Symbol", "Qty"], portfolio)
-
-    def populate_table_with_portfolio_diff(self, portfolio):
-        self.outputPanel.set_table(["Symbol", "Start Qty", "End Qty", "Diff"], portfolio)
-
-    def populate_table_with_transactions(self, transactions):
-        self.outputPanel.set_table(["Symbol", "Date", "Type", "Qty", "Price"], transactions)
-
-    def populate_table_with_twr_periods(self, periods: list[TWRPeriod]):
-        self.outputPanel.set_table(["From", "To", "Growth Factor", "Return", "Portfolio Initial Value", "Portfolio Final Value", "Cash Flow", "Gain/Loss"], [
-            (
-                period.start_date.toString(Qt.DateFormat.ISODate),
-                period.end_date.toString(Qt.DateFormat.ISODate),
-                f"{period.growth_factor:.2f}",
-                f"{period.period_return:.2%}",
-                f"$ {period.begin_portfolio_value:,.2f}",
-                f"$ {period.end_portfolio_value:,.2f}",
-                f"$ {period.cash_flow:,.2f}",
-                f"$ {period.gain_loss:,.2f}"
-            )
-            for period in periods
-        ])
-    
 class OutputPanel(Panel):    
     def __init__(self, title, parent):
         super().__init__(title, parent)
@@ -436,7 +272,144 @@ class OutputPanel(Panel):
     def copy_to_clipboard(self):
         clipboard = QApplication.clipboard()
         clipboard.setText(self.output.toPlainText())
+    
+class TransactionPanel(Panel):
+    def __init__(self, title, parent, portfolio: Portfolio):
+        self.portfolio = portfolio
+        super().__init__(title, parent)
 
+    def setup_table(self):
+        self.transactions_table.horizontalHeader().setStretchLastSection(False)
+        self.transactions_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        self.transactions_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.transactions_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        
+    def create_layout(self):
+        layout = QVBoxLayout()
+
+        self.transactions_table = QTableWidget()
+        self.transactions_table.setColumnCount(5)
+        self.transactions_table.setHorizontalHeaderLabels(["Symbol", "Date", "Type", "Quantity", "Price"])
+        self.setup_table()
+        layout.addWidget(self.transactions_table)
+        
+        last_opened_portfolio = Utils.retrieve_last_opened_portfolio()
+        self.load_data_from_csv(last_opened_portfolio)
+
+        # Add the button to load data from a CSV file
+        load_button = QPushButton("Load from CSV")
+        load_button.clicked.connect(self.load_data_from_csv_dialog)
+        layout.addWidget(load_button)
+
+        # Add any additional widgets or buttons if needed
+        refresh_button = QPushButton("Refresh")
+        refresh_button.clicked.connect(self.refresh_table)
+        layout.addWidget(refresh_button)
+        
+        return layout
+
+    def load_data_from_csv_dialog(self):
+        # Open a file dialog to get the path to the CSV file
+        file_dialog = QFileDialog()
+        file_path, _ = file_dialog.getOpenFileName(self, "Open CSV File", "", "CSV Files (*.csv)")
+        self.load_data_from_csv(file_path)
+
+    def load_data_from_csv(self, file_path):
+        if file_path:
+            print(f"Loading data from CSV file: {file_path}")
+
+            # Load data from the CSV file and update the table
+            try:
+                data = []
+
+                with open(file_path, 'r', newline='') as csvfile:
+                    csvreader = csv.reader(csvfile)
+                    headers = next(csvreader)
+                    data = [row for row in csvreader]
+                    self.set_current_working_portfolio(file_path, data)
+
+            except Exception as e:
+                print(f"Error loading CSV file: {e}")
+
+    def set_current_working_portfolio(self, file_path, data):
+        self.portfolio.file_path = file_path
+        self.portfolio.transactions = data
+        Utils.store_last_opened_portfolio(file_path)
+        self.load_data_to_table(data)
+    
+    def refresh_table(self):
+        # Implement refresh logic here if needed
+        pass
+
+    def load_data_to_table(self, data):
+        # Clear existing data
+        self.transactions_table.setRowCount(0)
+
+        # Load data to the table
+        for row, transaction in enumerate(data):
+            self.transactions_table.insertRow(row)
+            for col, value in enumerate(transaction):
+                item = QTableWidgetItem(str(value))
+                self.transactions_table.setItem(row, col, item)
+
+        self.transactions_table.resizeColumnsToContents()
+
+    def get_all_transactions(self):
+        all_transactions = []
+
+        for row in range(self.transactions_table.rowCount()):
+            transaction = []
+            for col in range(self.transactions_table.columnCount()):
+                item = self.transactions_table.item(row, col)
+                transaction.append(item.text())
+            all_transactions.append(tuple(transaction))
+
+        return all_transactions
+
+class OperationPanel(QDockWidget):
+    def __init__(self, title, parent, portfolio: Portfolio, output: Output):
+        super().__init__(title, parent)
+        self.portfolio = portfolio
+        self.output = output
+        self.transactions = []
+        self.setFeatures(QDockWidget.DockWidgetFeature.NoDockWidgetFeatures)
+        self.setWidget(QWidget())
+        self.widget().setLayout(self.create_layout())
+
+    def open_operation_settings_dialog(self, portfolio: Portfolio, output: Output, operation: Operation):
+        settings_dialog = OperationSettingsDialog(portfolio, output, operation)
+        main_window_size = self.size()
+        dialog_width = main_window_size.width() // 2
+        settings_dialog.setFixedWidth(max(dialog_width, 450))
+        settings_dialog.exec()
+
+    def create_layout(self):
+        layout = QVBoxLayout()
+        layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+        categories = {}
+
+        for operation in OperationRegistry.operations:
+            categories.setdefault(operation.category, []).append(operation)
+
+        # Define a helper function to create a lambda function with a default argument
+        def create_operation_setting_dialog_lambda(operation):
+            return lambda: self.open_operation_settings_dialog(self.portfolio, self.output, operation)
+
+        for category, operations in categories.items():
+            # Create a group box
+            group_box = QGroupBox(category)
+            group_layout = QVBoxLayout(group_box)
+
+            for operation in operations:
+                operation_button = QPushButton(operation.name)
+                operation_button.clicked.connect(create_operation_setting_dialog_lambda(operation))
+                group_layout.addWidget(operation_button)
+            
+            layout.addWidget(group_box)
+
+        return layout
+    
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -458,11 +431,19 @@ class MainWindow(QMainWindow):
         
     def init_ui(self):
         self.setWindowTitle(f"Perfolio")
+
+        self.portfolio = Portfolio()
+        self.output = Output()
         
         # Create panels
-        self.transaction_panel = TransactionPanel("Transactions", self)
+        self.transaction_panel = TransactionPanel("Transactions", self, self.portfolio)
         self.output_panel = OutputPanel("Output", self)
-        self.operation_panel = OperationPanel("Operations", self, self.transaction_panel, self.output_panel)
+        self.operation_panel = OperationPanel("Operations", self, self.portfolio, self.output)
+
+        self.output.register_callbacks(
+            self.output_panel.append_text,
+            self.output_panel.set_table
+        )
 
         # Setup docking
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.transaction_panel)
@@ -482,8 +463,17 @@ class MainWindow(QMainWindow):
         settings_action = QAction("Settings", self)
         settings_action.triggered.connect(self.open_settings)
         edit_menu.addAction(settings_action)
-        
+
         help_menu = menu_bar.addMenu("Help")
+
+        report_issue_action = QAction("Report Issue", self)
+        report_issue_action.triggered.connect(lambda: QDesktopServices.openUrl(QUrl("https://github.com/adriengivry/perfolio/issues/new")))
+        help_menu.addAction(report_issue_action)
+
+        open_repository_action = QAction("Open GitHub Repository", self)
+        open_repository_action.triggered.connect(lambda: QDesktopServices.openUrl(QUrl("https://github.com/adriengivry/perfolio")))
+        help_menu.addAction(open_repository_action)
+        
         about_action = QAction("About", self)
         about_action.triggered.connect(self.open_about)
         help_menu.addAction(about_action)
@@ -503,5 +493,5 @@ class MainWindow(QMainWindow):
         settings_dialog.exec()
         
     def open_about(self):
-        self.show_popup("About", "This tool is the property of Adrien Givry.", QMessageBox.Icon.Information)
+        self.show_popup("About", f"Perfolio version: {perfolio.__version__}", QMessageBox.Icon.Information)
         
