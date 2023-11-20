@@ -1,8 +1,6 @@
-from datetime import timedelta
 from itertools import groupby
 from PySide6.QtCore import Qt, QDate
 import numpy
-import yfinance as yf
 
 from perfolio.finance import Finance
 from perfolio.symbol import SymbolCache 

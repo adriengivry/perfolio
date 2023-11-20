@@ -1,11 +1,9 @@
 import qdarktheme
 
 from PySide6.QtWidgets import QApplication, QMenu
-from PySide6.QtGui import QIcon, QAction
 
 from perfolio.gui import MainWindow
 from perfolio.settings import AppSettings
-from perfolio.utils import Utils
 
 class Application:
     def __init__(self, argv:list[str]):

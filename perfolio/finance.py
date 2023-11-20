@@ -1,9 +1,5 @@
-from datetime import timedelta
-from itertools import groupby
 from PySide6.QtCore import Qt, QDate
 import numpy
-import yfinance as yf
-import pandas as pd
 
 from perfolio.symbol import SymbolCache
 

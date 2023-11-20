@@ -87,7 +87,7 @@ class CalculateTWROperation(Operation):
 
         # Print the result
         output.log_text(f"Time-Weighted Return (TWR): {twr.value:.2%}")
-        output.log_table(["From", "To", "Growth Factor", "Return", "Portfolio Initial Value", "Portfolio Final Value", "Cash Flow", "Gain/Loss"], [
+        output.log_table(f"TWR (From {start_date.toString(Qt.DateFormat.ISODate)} to {end_date.toString(Qt.DateFormat.ISODate)})", ["From", "To", "Growth Factor", "Return", "Portfolio Initial Value", "Portfolio Final Value", "Cash Flow", "Gain/Loss"], [
             (
                 period.start_date.toString(Qt.DateFormat.ISODate),
                 period.end_date.toString(Qt.DateFormat.ISODate),
@@ -115,7 +115,7 @@ class ViewHoldingsOperation(Operation):
         date = self.get("date")
 
         holdings = Finance.get_holdings_at_date(portfolio.transactions, date, False)
-        output.log_table(["Symbol", "Quantity"], holdings)
+        output.log_table(f"Holdings ({date.toString(Qt.DateFormat.ISODate)})", ["Symbol", "Quantity"], holdings)
         
         return True
     
@@ -133,7 +133,7 @@ class ViewTransactionsOperation(Operation):
         to_date = self.get("to")
 
         transactions = Finance.get_transactions_between_dates(portfolio.transactions, from_date, to_date)
-        output.log_table(["Symbol", "Date", "Type", "Quantity", "Price"], transactions)
+        output.log_table(f"Transactions (From {from_date.toString(Qt.DateFormat.ISODate)} to {to_date.toString(Qt.DateFormat.ISODate)})", ["Symbol", "Date", "Type", "Quantity", "Price"], transactions)
         
         return True
     
@@ -151,6 +151,6 @@ class ViewHoldingsDiffOperation(Operation):
         to_date = self.get("to")
 
         holdings_diff = Finance.get_portfolio_diff(portfolio.transactions, from_date, to_date)
-        output.log_table(["Symbol", "Start Quantity", "End Quantity", "Diff"], holdings_diff)
+        output.log_table(f"Holdings Diff (From {from_date.toString(Qt.DateFormat.ISODate)} to {to_date.toString(Qt.DateFormat.ISODate)})", ["Symbol", "Start Quantity", "End Quantity", "Diff"], holdings_diff)
         
         return True

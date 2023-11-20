@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QLabel, QFormLayout, QDockWidget, QStyle,
     QTextEdit, QApplication, QTableWidget,
     QFileDialog, QTableWidgetItem, QHeaderView,
-    QGroupBox
+    QGroupBox, QTabWidget
 )
 import perfolio
 from perfolio.output import Output
@@ -19,8 +19,6 @@ from perfolio.portfolio import Portfolio
 from perfolio.settings import AppSettings
 from perfolio.utils import Utils
 from perfolio.operations import OperationRegistry, Operation
-from perfolio.finance import Finance
-from perfolio.twr import TWRProcessor, TWRResult, TWRPeriod
 
 class SettingsDialog(QDialog):
     def __init__(self):
@@ -177,16 +175,6 @@ class OutputPanel(Panel):
         
         return output
     
-    def create_table(self) -> QTableWidget:
-        table = QTableWidget()
-        
-        table.horizontalHeader().setStretchLastSection(False)
-        table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
-        table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-
-        return table
-    
     def create_controls(self) -> QLayout:
         # Create controls
         self.clear_button = QPushButton("Clear Output")
@@ -218,32 +206,41 @@ class OutputPanel(Panel):
     def create_layout(self):
         layout = QVBoxLayout()
         
-        self.table = self.create_table()
+        self.tabs = QTabWidget()
+        self.tabs.setTabsClosable(True)
+        self.tabs.tabCloseRequested.connect(self.close_tab)
+        
         self.output = self.create_output()
         controls_layout = self.create_controls()
         
-        layout.addWidget(self.table)
+        layout.addWidget(self.tabs)
         layout.addWidget(self.output)
         layout.addLayout(controls_layout)
         
         return layout
     
-    def set_table(self, headers: list[str], data: list[tuple]):
-        self.clear_table()
-        self.table.setColumnCount(len(headers))
-        self.table.setHorizontalHeaderLabels(headers)
+    def close_tab(self, index):
+        self.tabs.removeTab(index)
+    
+    def append_table(self, name: str, headers: list[str], data: list[tuple]):
+        table = QTableWidget()
+        table.horizontalHeader().setStretchLastSection(False)
+        table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+
+        table.setColumnCount(len(headers))
+        table.setHorizontalHeaderLabels(headers)
 
         for rowIndex, entry in enumerate(data):
-            self.table.insertRow(rowIndex)
+            table.insertRow(rowIndex)
             for col, value in enumerate(entry):
                     item = QTableWidgetItem(str(value))
-                    self.table.setItem(rowIndex, col, item)
+                    table.setItem(rowIndex, col, item)
 
-        self.table.resizeColumnsToContents()
-
-    def clear_table(self):
-        self.table.setHorizontalHeaderLabels([])
-        self.table.setRowCount(0)
+        table.resizeColumnsToContents()
+        self.tabs.addTab(table, name)
+        self.tabs.setCurrentWidget(table)
 
     def append_text(self, text):
         if text != None:
@@ -259,7 +256,7 @@ class OutputPanel(Panel):
         self.scroll_to_bottom_button.setEnabled(False)
         self.copy_button.setEnabled(False)
         self.output.clear()
-            
+
     def scroll_to_bottom(self):
         max_y_scroll = self.output.verticalScrollBar().maximum()
         self.output.verticalScrollBar().setValue(max_y_scroll)
@@ -302,9 +299,9 @@ class TransactionPanel(Panel):
         layout.addWidget(load_button)
 
         # Add any additional widgets or buttons if needed
-        refresh_button = QPushButton("Refresh")
-        refresh_button.clicked.connect(self.refresh_table)
-        layout.addWidget(refresh_button)
+        reload_button = QPushButton("Reload")
+        reload_button.clicked.connect(self.reload)
+        layout.addWidget(reload_button)
         
         return layout
 
@@ -337,9 +334,8 @@ class TransactionPanel(Panel):
         Utils.store_last_opened_portfolio(file_path)
         self.load_data_to_table(data)
     
-    def refresh_table(self):
-        # Implement refresh logic here if needed
-        pass
+    def reload(self):
+        self.load_data_from_csv(self.portfolio.file_path)
 
     def load_data_to_table(self, data):
         # Clear existing data
@@ -442,7 +438,7 @@ class MainWindow(QMainWindow):
 
         self.output.register_callbacks(
             self.output_panel.append_text,
-            self.output_panel.set_table
+            self.output_panel.append_table
         )
 
         # Setup docking

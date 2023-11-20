@@ -9,6 +9,6 @@ class Output:
     def log_text(self, text: str):
         self.text_callback(text)
 
-    def log_table(self, headers: list[str], data: list[tuple]):
-        self.table_callback(headers, data)
+    def log_table(self, name: str, headers: list[str], data: list[tuple]):
+        self.table_callback(name, headers, data)
         
