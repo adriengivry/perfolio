@@ -1,7 +1,10 @@
-import json
 import os
 import sys
-        
+import json
+
+from datetime import datetime
+from dateutil import parser
+
 class Utils:
     @staticmethod
     def get_appdata_path():
@@ -52,4 +55,16 @@ class Utils:
         if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
             return os.path.join(Utils.get_bundle_dir(), asset_path)
         return asset_path
+    
+    @staticmethod
+    def get_supported_date_formats():
+        return ["%m/%d/%Y", "%d/%m/%Y", "%Y-%m-%d"]
+    
+    @staticmethod
+    def convert_date_format(date, format="%Y-%m-%d"):
+        try:
+            parsed_date = parser.parse(date)
+            return parsed_date.strftime(format)
+        except:
+            return None
  

@@ -3,3 +3,4 @@ pandas==2.1.3
 PySide6==6.6.0
 setuptools==68.2.2
 yfinance==0.2.31
+python-dateutil==2.8.2

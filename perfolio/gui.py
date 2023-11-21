@@ -2,7 +2,7 @@ import os
 import csv
 
 from PySide6 import QtCore
-from PySide6.QtCore import Qt, QUrl
+from PySide6.QtCore import Qt, QUrl, QDate
 from PySide6.QtGui import QAction, QFont, QFontDatabase, QIcon, QPainter, QPixmap, QDesktopServices
 from PySide6.QtWidgets import (
     QDialog, QLayout, QMainWindow, QMessageBox,
@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 )
 import perfolio
 from perfolio.output import Output
-from perfolio.portfolio import Portfolio
+from perfolio.portfolio import Portfolio, Transaction
 
 from perfolio.settings import AppSettings
 from perfolio.utils import Utils
@@ -293,15 +293,17 @@ class TransactionPanel(Panel):
         last_opened_portfolio = Utils.retrieve_last_opened_portfolio()
         self.load_data_from_csv(last_opened_portfolio)
 
-        # Add the button to load data from a CSV file
         load_button = QPushButton("Load from CSV")
         load_button.clicked.connect(self.load_data_from_csv_dialog)
         layout.addWidget(load_button)
 
-        # Add any additional widgets or buttons if needed
-        reload_button = QPushButton("Reload")
+        reload_button = QPushButton("Reload CSV")
         reload_button.clicked.connect(self.reload)
         layout.addWidget(reload_button)
+
+        reload_historical_prices = QPushButton("Reload Historical Prices")
+        reload_historical_prices.clicked.connect(self.reload_historical_prices)
+        layout.addWidget(reload_historical_prices)
         
         return layout
 
@@ -317,25 +319,70 @@ class TransactionPanel(Panel):
 
             # Load data from the CSV file and update the table
             try:
-                data = []
+                self.portfolio.clear()
+                self.portfolio.file_path = file_path
 
                 with open(file_path, 'r', newline='') as csvfile:
                     csvreader = csv.reader(csvfile)
-                    headers = next(csvreader)
-                    data = [row for row in csvreader]
-                    self.set_current_working_portfolio(file_path, data)
+                    headers = [header.lower() for header in next(csvreader)]
+
+                    # Mapping for header variations
+                    header_mapping = {
+                        'date': ['date', 'dt', 'dte', 'de', 'day', 'at', 'dy'],
+                        'symbol': ['symbol', 'ticker', 'sym', 'sbl', 'symbols'],
+                        'type': ['type', 'transaction', 'trz', 'tpe'],
+                        'quantity': ['quantity', 'qty', 'qt', 'amount', 'volume', 'amnt', 'shares'],
+                        'price': ['price', 'prc', 'pc', 'cost']
+                    }
+                    
+                    for row in csvreader:
+                        transaction = Transaction()
+
+                        # Process each header and fill in the transaction attributes
+                        for attribute, variations in header_mapping.items():
+                            for variation in variations:
+                                if variation in headers:
+                                    index = headers.index(variation)
+                                    value = row[index]
+
+                                    # Special handling for 'date' and 'quantity'
+                                    if attribute == 'date':
+                                        value = Utils.convert_date_format(value)
+                                        transaction.date = QDate.fromString(value, Qt.DateFormat.ISODate)
+                                    elif attribute == 'quantity':
+                                        transaction.quantity = float(value)
+                                    else:
+                                        setattr(transaction, attribute, value)
+                                    break
+
+                        self.portfolio.transactions.append(transaction)
+
+                self.on_portfolio_updated()
 
             except Exception as e:
                 print(f"Error loading CSV file: {e}")
 
-    def set_current_working_portfolio(self, file_path, data):
-        self.portfolio.file_path = file_path
-        self.portfolio.transactions = data
-        Utils.store_last_opened_portfolio(file_path)
-        self.load_data_to_table(data)
+    def on_portfolio_updated(self):
+        self.portfolio.update_symbol_cache()
+
+        Utils.store_last_opened_portfolio(self.portfolio.file_path)
+        
+        self.load_data_to_table([
+            (
+            transaction.symbol,
+            transaction.date.toString(Qt.DateFormat.ISODate),
+            transaction.type,
+            f"{transaction.quantity:.0f}" if transaction.quantity.is_integer() else f"{transaction.quantity:.2f}",
+            str(transaction.price)
+            )
+            for transaction in self.portfolio.transactions
+        ])
     
     def reload(self):
         self.load_data_from_csv(self.portfolio.file_path)
+
+    def reload_historical_prices(self):
+        self.portfolio.update_symbol_cache()
 
     def load_data_to_table(self, data):
         # Clear existing data

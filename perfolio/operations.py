@@ -1,6 +1,5 @@
 import hashlib
 from PySide6.QtCore import Qt, QDate
-from perfolio.finance import Finance
 from perfolio.output import Output
 from perfolio.portfolio import Portfolio
 
@@ -83,7 +82,7 @@ class CalculateTWROperation(Operation):
         end_date = self.get("to")
 
         # Calculate TWR
-        twr = TWRProcessor.calculate_twr(portfolio.transactions, start_date, end_date)
+        twr = TWRProcessor.calculate_twr(portfolio, start_date, end_date)
 
         # Print the result
         output.log_text(f"Time-Weighted Return (TWR): {twr.value:.2%}")
@@ -102,6 +101,41 @@ class CalculateTWROperation(Operation):
         ])
 
         return True
+    
+@OperationRegistry.register("Return Calculation", "Calculate MWR")
+class CalculateTWROperation(Operation):
+    def get_settings_desc(self):
+        return {
+            **super().get_settings_desc(),
+            "from": SettingFactory.date("From", QDate.currentDate().addYears(-1)),
+            "to": SettingFactory.date("To"),
+           
+        }
+    
+    def execute(self, portfolio: Portfolio, output: Output):
+        start_date = self.get("from")
+        end_date = self.get("to")
+
+        # # Calculate TWR
+        # portfolio.transactions = Finance.calculate_portfolio_value_at_date_from_transactions(portfolio.transactions,  )
+
+        # # Print the result
+        # # output.log_text(f"Money-Weighted Return (MWR): {twr.value:.2%}")
+        # output.log_table(f"MWR (From {start_date.toString(Qt.DateFormat.ISODate)} to {end_date.toString(Qt.DateFormat.ISODate)})", ["From", "To", "Growth Factor", "Return", "Portfolio Initial Value", "Portfolio Final Value", "Cash Flow", "Gain/Loss"], [
+        #     (
+        #         period.start_date.toString(Qt.DateFormat.ISODate),
+        #         period.end_date.toString(Qt.DateFormat.ISODate),
+        #         f"{period.growth_factor:.2f}",
+        #         f"{period.period_return:.2%}",
+        #         f"$ {period.begin_portfolio_value:,.2f}",
+        #         f"$ {period.end_portfolio_value:,.2f}",
+        #         f"$ {period.cash_flow:,.2f}",
+        #         f"$ {period.gain_loss:,.2f}"
+        #     )
+        #     for period in twr.periods
+        # ])
+
+        return True
 
 @OperationRegistry.register("Portfolio Analysis", "View Holdings")
 class ViewHoldingsOperation(Operation):
@@ -114,8 +148,8 @@ class ViewHoldingsOperation(Operation):
     def execute(self, portfolio: Portfolio, output: Output):
         date = self.get("date")
 
-        holdings = Finance.get_holdings_at_date(portfolio.transactions, date, False)
-        output.log_table(f"Holdings ({date.toString(Qt.DateFormat.ISODate)})", ["Symbol", "Quantity"], holdings)
+        holdings = portfolio.get_holdings_at_date(date, False)
+        output.log_table(f"Holdings ({date.toString(Qt.DateFormat.ISODate)})", ["Symbol", "Quantity"], holdings.items())
         
         return True
     
@@ -132,8 +166,17 @@ class ViewTransactionsOperation(Operation):
         from_date = self.get("from")
         to_date = self.get("to")
 
-        transactions = Finance.get_transactions_between_dates(portfolio.transactions, from_date, to_date)
-        output.log_table(f"Transactions (From {from_date.toString(Qt.DateFormat.ISODate)} to {to_date.toString(Qt.DateFormat.ISODate)})", ["Symbol", "Date", "Type", "Quantity", "Price"], transactions)
+        transactions = portfolio.get_transactions_between_dates(from_date, to_date)
+        output.log_table(f"Transactions (From {from_date.toString(Qt.DateFormat.ISODate)} to {to_date.toString(Qt.DateFormat.ISODate)})", ["Symbol", "Date", "Type", "Quantity", "Price"], [
+            (
+                transaction.symbol,
+                transaction.date.toString(Qt.DateFormat.ISODate),
+                transaction.type,
+                f"{transaction.quantity:.0f}" if transaction.quantity.is_integer() else f"{transaction.quantity:.2f}",
+                str(transaction.price)
+            )
+            for transaction in transactions
+        ])
         
         return True
     
@@ -150,7 +193,7 @@ class ViewHoldingsDiffOperation(Operation):
         from_date = self.get("from")
         to_date = self.get("to")
 
-        holdings_diff = Finance.get_portfolio_diff(portfolio.transactions, from_date, to_date)
-        output.log_table(f"Holdings Diff (From {from_date.toString(Qt.DateFormat.ISODate)} to {to_date.toString(Qt.DateFormat.ISODate)})", ["Symbol", "Start Quantity", "End Quantity", "Diff"], holdings_diff)
+        holdings_diff = portfolio.get_holdings_difference(from_date, to_date)
+        output.log_table(f"Holdings Diff (From {from_date.toString(Qt.DateFormat.ISODate)} to {to_date.toString(Qt.DateFormat.ISODate)})", ["Symbol", "Difference"], holdings_diff.items())
         
         return True
