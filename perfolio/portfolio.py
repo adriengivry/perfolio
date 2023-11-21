@@ -57,7 +57,7 @@ class Portfolio:
         holdings_difference = {symbol: end_holdings[symbol] - start_holdings[symbol] for symbol in common_symbols}
         return holdings_difference
     
-    def get_portfolio_value_at_date(self, date: QDate, at_close: bool):
+    def get_value_at_date(self, date: QDate, at_close: bool):
         total_portfolio_value = 0
 
         holdings = self.get_holdings_at_date(date, at_close) # Returns a dict of str, float (symbol, quantity)
@@ -72,7 +72,7 @@ class Portfolio:
 
         return total_portfolio_value
     
-    def calculate_cash_flows_between(self, start_date: QDate, end_date: QDate):
+    def get_cash_flows_between(self, start_date: QDate, end_date: QDate):
         transactions = self.get_transactions_between_dates(start_date, end_date)
 
         cash_flow = 0

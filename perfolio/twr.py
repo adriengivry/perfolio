@@ -23,8 +23,8 @@ class TWRResult:
 class TWRProcessor:
     @staticmethod
     def calculate_twr_period(portfolio: Portfolio, period_date: QDate, previous_period_date: QDate, previous_period_portfolio: float) -> TWRPeriod:
-        current_portfolio = portfolio.get_portfolio_value_at_date(period_date, True)
-        period_cash_flows = portfolio.calculate_cash_flows_between(previous_period_date, period_date)
+        current_portfolio = portfolio.get_value_at_date(period_date, True)
+        period_cash_flows = portfolio.get_cash_flows_between(previous_period_date, period_date)
 
         if previous_period_portfolio != 0:
             growth_factor = (current_portfolio - period_cash_flows) / previous_period_portfolio
@@ -55,7 +55,7 @@ class TWRProcessor:
 
         periods = list[TWRPeriod]()
 
-        previous_portfolio = portfolio.get_portfolio_value_at_date(begin_date, False)
+        previous_portfolio = portfolio.get_value_at_date(begin_date, False)
         previous_period_date = begin_date
 
         for period_date in periods_transactions.keys():

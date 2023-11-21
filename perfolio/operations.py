@@ -116,7 +116,7 @@ class CalculateTWROperation(Operation):
         start_date = self.get("from")
         end_date = self.get("to")
 
-        # # Calculate TWR
+        # Calculate TWR
         # portfolio.transactions = Finance.calculate_portfolio_value_at_date_from_transactions(portfolio.transactions,  )
 
         # # Print the result
@@ -152,6 +152,7 @@ class ViewHoldingsOperation(Operation):
         output.log_table(f"Holdings ({date.toString(Qt.DateFormat.ISODate)})", ["Symbol", "Quantity"], holdings.items())
         
         return True
+        
     
 @OperationRegistry.register("Portfolio Analysis", "View Transactions")
 class ViewTransactionsOperation(Operation):
@@ -180,8 +181,8 @@ class ViewTransactionsOperation(Operation):
         
         return True
     
-@OperationRegistry.register("Portfolio Analysis", "View Holdings Diff")
-class ViewHoldingsDiffOperation(Operation):
+@OperationRegistry.register("Portfolio Analysis", "View Holdings Difference")
+class ViewHoldingsDifferenceOperation(Operation):
     def get_settings_desc(self):
         return {
             **super().get_settings_desc(),
@@ -195,5 +196,51 @@ class ViewHoldingsDiffOperation(Operation):
 
         holdings_diff = portfolio.get_holdings_difference(from_date, to_date)
         output.log_table(f"Holdings Diff (From {from_date.toString(Qt.DateFormat.ISODate)} to {to_date.toString(Qt.DateFormat.ISODate)})", ["Symbol", "Difference"], holdings_diff.items())
+        
+        return True
+    
+@OperationRegistry.register("Portfolio Analysis", "View Holdings Value")
+class ViewHoldingsValueOperation(Operation):
+    def get_settings_desc(self):
+        return {
+            **super().get_settings_desc(),
+            "date": SettingFactory.date("Date"),
+            "at": SettingFactory.list("At", ["Close", "Open"], "Close"),
+        }
+    
+    def execute(self, portfolio: Portfolio, output: Output):
+        date = self.get("date")
+
+        portfolio_value = portfolio.get_value_at_date(date, False)
+        output.log_table(f"Holdings ({date.toString(Qt.DateFormat.ISODate)})", ["Date", "Portfolio Value"], [
+            [
+                date.toString(Qt.DateFormat.ISODate),
+                f"$ {portfolio_value:,.2f}",
+            ]
+        ])
+        
+        return True
+    
+@OperationRegistry.register("Portfolio Analysis", "View Cash Flows")
+class ViewCashFlowsOperation(Operation):
+    def get_settings_desc(self):
+        return {
+            **super().get_settings_desc(),
+            "from": SettingFactory.date("From", QDate.currentDate().addYears(-1)),
+            "to": SettingFactory.date("To"),
+        }
+    
+    def execute(self, portfolio: Portfolio, output: Output):
+        from_date = self.get("from")
+        to_date = self.get("to")
+
+        cash_flows = portfolio.get_cash_flows_between(from_date, to_date)
+        output.log_table(f"Cash Flows (From {from_date.toString(Qt.DateFormat.ISODate)} to {to_date.toString(Qt.DateFormat.ISODate)})", ["From", "To", "Cash Flows"], [
+            [
+                from_date.toString(Qt.DateFormat.ISODate),
+                to_date.toString(Qt.DateFormat.ISODate),
+                f"$ {cash_flows:,.2f}",
+            ]
+        ])
         
         return True
