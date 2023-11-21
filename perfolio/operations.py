@@ -113,27 +113,32 @@ class CalculateTWROperation(Operation):
         }
     
     def execute(self, portfolio: Portfolio, output: Output):
-        start_date = self.get("from")
-        end_date = self.get("to")
+        from_date = self.get("from")
+        to_date = self.get("to")
 
-        # Calculate TWR
-        # portfolio.transactions = Finance.calculate_portfolio_value_at_date_from_transactions(portfolio.transactions,  )
+        cash_flows = portfolio.get_cash_flows_between(from_date, to_date)
 
-        # # Print the result
-        # # output.log_text(f"Money-Weighted Return (MWR): {twr.value:.2%}")
-        # output.log_table(f"MWR (From {start_date.toString(Qt.DateFormat.ISODate)} to {end_date.toString(Qt.DateFormat.ISODate)})", ["From", "To", "Growth Factor", "Return", "Portfolio Initial Value", "Portfolio Final Value", "Cash Flow", "Gain/Loss"], [
-        #     (
-        #         period.start_date.toString(Qt.DateFormat.ISODate),
-        #         period.end_date.toString(Qt.DateFormat.ISODate),
-        #         f"{period.growth_factor:.2f}",
-        #         f"{period.period_return:.2%}",
-        #         f"$ {period.begin_portfolio_value:,.2f}",
-        #         f"$ {period.end_portfolio_value:,.2f}",
-        #         f"$ {period.cash_flow:,.2f}",
-        #         f"$ {period.gain_loss:,.2f}"
-        #     )
-        #     for period in twr.periods
-        # ])
+        initial_value = portfolio.get_value_at_date(from_date, False)
+        final_value = portfolio.get_value_at_date(to_date, True)
+        gain_loss = final_value - initial_value - cash_flows
+
+        try:
+            mwr = (final_value + cash_flows) / initial_value - 1
+        except ZeroDivisionError:
+            output.log_text("Error: Initial portfolio value is zero. Unable to calculate money-weighted return.")
+            mwr = 0.0
+
+        output.log_table(f"MWR (From {from_date.toString(Qt.DateFormat.ISODate)} to {to_date.toString(Qt.DateFormat.ISODate)})", ["From", "To", "Return", "Initial Value", "Final Value", "Cash Flow"], [
+            [
+                from_date.toString(Qt.DateFormat.ISODate),
+                to_date.toString(Qt.DateFormat.ISODate),
+                f"{mwr:.2%}",
+                f"$ {initial_value:,.2f}",
+                f"$ {final_value:,.2f}",
+                f"$ {cash_flows:,.2f}",
+                f"$ {gain_loss:,.2f}",
+            ]
+        ])
 
         return True
 
