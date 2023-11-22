@@ -363,7 +363,8 @@ class TransactionPanel(Panel):
                 print(f"Error loading CSV file: {e}")
 
     def on_portfolio_updated(self):
-        self.portfolio.update_symbol_cache()
+        auto_load_prices = AppSettings.get("auto_load_historical_prices")
+        self.portfolio.update_symbol_cache(auto_load_prices)
 
         Utils.store_last_opened_portfolio(self.portfolio.file_path)
         
@@ -382,7 +383,7 @@ class TransactionPanel(Panel):
         self.load_data_from_csv(self.portfolio.file_path)
 
     def reload_historical_prices(self):
-        self.portfolio.update_symbol_cache()
+        self.portfolio.symbol_cache.populate()
 
     def load_data_to_table(self, data):
         # Clear existing data

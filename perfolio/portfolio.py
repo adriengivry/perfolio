@@ -20,11 +20,13 @@ class Portfolio:
         self.transactions = []
         self.symbol_cache = None
 
-    def update_symbol_cache(self):
+    def update_symbol_cache(self, force_populate: bool = False):
         sorted_transactions = sorted(self.transactions, key=lambda t: t.date)
         first_transaction_date = sorted_transactions[0].date
         unique_symbols = sorted(set(transaction.symbol for transaction in self.transactions))
         self.symbol_cache = SymbolCache(first_transaction_date, QDate.currentDate(), unique_symbols)
+        if force_populate:
+            self.symbol_cache.populate()
 
     def get_transactions_between_dates(self, start_date: QDate, end_date: QDate) -> list[Transaction]:
         filtered_transactions = []

@@ -111,7 +111,8 @@ class SettingFactory:
     
 class AppSettings:
     settings_desc = {
-        "theme": SettingFactory.list("Theme (restart to apply)", ["auto", "light", "dark"], "auto")
+        "theme": SettingFactory.list("Theme (restart to apply)", ["auto", "light", "dark"], "auto"),
+        "auto_load_historical_prices": SettingFactory.bool("Automatically Load Historical Prices", False)
     }
     
     settings = {}
