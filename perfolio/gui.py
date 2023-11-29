@@ -537,5 +537,5 @@ class MainWindow(QMainWindow):
         settings_dialog.exec()
         
     def open_about(self):
-        self.show_popup("About", f"Perfolio version: {perfolio.__version__}", QMessageBox.Icon.Information)
+        self.show_popup("About", f"Developed by Adrien GIVRY under MIT license.\nPerfolio version: {perfolio.__version__}", QMessageBox.Icon.Information)
         
