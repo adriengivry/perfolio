@@ -123,7 +123,7 @@ class CalculateTWROperation(Operation):
         gain_loss = final_value - initial_value - cash_flows
 
         try:
-            mwr = (final_value + cash_flows) / initial_value - 1
+            mwr = (final_value - cash_flows) / initial_value - 1
         except ZeroDivisionError:
             output.log_text("Error: Initial portfolio value is zero. Unable to calculate money-weighted return.")
             mwr = 0.0
