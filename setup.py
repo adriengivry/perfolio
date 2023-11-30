@@ -13,7 +13,7 @@ setup(
     packages=find_packages(),
     entry_points={
         "console_scripts": [
-            "mcsgui = mcsgui.__main__:main",
+            "perfolio = perfolio.__main__:main",
         ],
     },
     classifiers=[

@@ -89,7 +89,7 @@ class SettingsDialog(QDialog):
             self.load_settings(True)
             
     def open_settings_file(self):
-        settings_folder = Utils.get_mcsgui_appdata_path()
+        settings_folder = Utils.get_appdata_path()
         settings_file = os.path.join(settings_folder, "settings.json")
 
         if os.path.exists(settings_file):
