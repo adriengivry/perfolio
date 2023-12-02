@@ -514,7 +514,7 @@ class MainWindow(QMainWindow):
         report_issue_action.triggered.connect(lambda: QDesktopServices.openUrl(QUrl("https://github.com/adriengivry/perfolio/issues/new")))
         help_menu.addAction(report_issue_action)
 
-        open_repository_action = QAction("Open GitHub Repository", self)
+        open_repository_action = QAction("GitHub", self)
         open_repository_action.triggered.connect(lambda: QDesktopServices.openUrl(QUrl("https://github.com/adriengivry/perfolio")))
         help_menu.addAction(open_repository_action)
         
