@@ -47,16 +47,6 @@ class Utils:
             return None  # Return None if JSON file doesn't exist
     
     @staticmethod
-    def get_bundle_dir():
-        return os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-    
-    @staticmethod
-    def get_bundled_asset(asset_path):
-        if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-            return os.path.join(Utils.get_bundle_dir(), asset_path)
-        return asset_path
-    
-    @staticmethod
     def get_supported_date_formats():
         return ["%m/%d/%Y", "%d/%m/%Y", "%Y-%m-%d"]
     
