@@ -328,7 +328,7 @@ class TransactionPanel(Panel):
 
                     # Mapping for header variations
                     header_mapping = {
-                        'date': ['date', 'dt', 'dte', 'de', 'day', 'at', 'dy'],
+                        'date': ['date', 'dt', 'dte', 'de', 'day', 'at', 'dy', 'time', 'timestamp'],
                         'symbol': ['symbol', 'ticker', 'sym', 'sbl', 'symbols'],
                         'type': ['type', 'transaction', 'trz', 'tpe'],
                         'quantity': ['quantity', 'qty', 'qt', 'amount', 'volume', 'amnt', 'shares'],
