@@ -40,7 +40,7 @@ class Utils:
                     if last_portfolio_opened and os.path.exists(last_portfolio_opened):
                         return last_portfolio_opened
                     else:
-                        return None  # Return None if last_cwd is invalid or directory doesn't exist
+                        return None
                 except json.JSONDecodeError:
                     return None  # Return None if there's an issue decoding JSON
         else:
