@@ -332,7 +332,7 @@ class TransactionPanel(Panel):
                         'symbol': ['symbol', 'ticker', 'sym', 'sbl', 'symbols'],
                         'type': ['type', 'transaction', 'trz', 'tpe'],
                         'quantity': ['quantity', 'qty', 'qt', 'amount', 'volume', 'amnt', 'shares'],
-                        'price': ['price', 'prc', 'pc', 'cost']
+                        'price': ['price', 'prc', 'pc', 'cost', 'value', 'cst', 'money', 'spent']
                     }
                     
                     for row in csvreader:
